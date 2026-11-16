@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: ball-trace
+    env: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist

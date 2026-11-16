@@ -1,0 +1,1 @@
+{"name":"ball-tracker","private":true,"type":"module","scripts":{"build":"esbuild src/app.js --bundle --format=esm --outfile=dist/app.js","test":"node --test"},"dependencies":{"esbuild":"^0.28.2","mediabunny":"^1.66.0"}}

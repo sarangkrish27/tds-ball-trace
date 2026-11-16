@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Ball Trace — Follow the one</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header><a href="./" class="brand"><span class="brand-icon">●</span> ball<span>trace</span></a><span
+            class="privacy"><i></i> On-device processing</span></header>
+    <main>
+        <section class="intro"><span class="eyebrow">100 BALLS. ONE TO FOLLOW.</span>
+            <h1>Keep your eye on <em>the red one.</em></h1>
+            <p>Follow your ball through the crowd. Get its final number and precise coordinates at the frames you need.
+            </p>
+        </section>
+        <div class="workspace">
+            <aside class="panel setup">
+                <div class="section-title"><span class="step">01</span>
+                    <h2>Set up your trace</h2>
+                </div>
+                <label class="drop" id="drop"><input id="file" type="file" accept=".webm,video/webm"><span
+                        class="upload-icon">↥</span><strong id="filename">Drop your video here</strong><span>or click to
+                        choose a .webm file</span><small>Processed privately in your browser · up to 100
+                        MB</small></label>
+                <div class="label-row">
+                    <h3>Frames to locate</h3><span>Count starts at 0</span>
+                </div>
+                <div class="frames"><label>Frame 1<input id="frame1" type="number" min="0" step="1" value="119"
+                            required></label><label>Frame 2<input id="frame2" type="number" min="0" step="1" value="330"
+                            required></label><label>Frame 3<input id="frame3" type="number" min="0" step="1" value="558"
+                            required></label></div>
+                <button id="track" class="primary" disabled>Track my ball <span>→</span></button><button id="cancel"
+                    class="secondary" hidden>Cancel tracking</button>
+                <p id="status" role="status" aria-live="polite">Choose a video to get started.</p><progress
+                    id="progress" max="1" value="0" hidden></progress>
+                <div class="tip"><b>A little context</b>
+                    <p>Your ball starts red, turns grey, then reveals its number. We follow every decoded frame, from
+                        start to finish.</p>
+                </div>
+            </aside>
+            <section class="panel viewer">
+                <div class="viewer-top">
+                    <div class="section-title"><span class="step">02</span>
+                        <h2>Follow the motion</h2>
+                    </div><span id="meta" class="pill">NO VIDEO LOADED</span>
+                </div>
+                <div class="stage" id="stage"><canvas id="view" width="480" height="480"
+                        aria-label="Video frame with tracked ball highlighted"></canvas>
+                    <div class="empty" id="empty">
+                        <div class="orbit"><i></i><b></b><span></span></div>
+                        <h3>One ball. An unbroken path.</h3>
+                        <p>Your video and tracking overlay will appear here.</p>
+                    </div>
+                </div>
+                <div class="timeline"><button id="prev" aria-label="Previous frame" disabled>←</button><input id="scrub"
+                        type="range" min="0" max="0" value="0" aria-label="Review video frame" disabled><button
+                        id="next" aria-label="Next frame" disabled>→</button><span id="frameLabel">Frame —</span></div>
+                <div class="legend"><span><i class="red"></i> Your tracked ball</span><span>Coordinates use original
+                        video pixels</span></div>
+            </section>
+        </div>
+        <section class="panel results">
+            <div class="section-title"><span class="step">03</span>
+                <h2>Your answer</h2><span id="resultState" class="pill">WAITING FOR A TRACE</span>
+            </div>
+            <div id="resultEmpty" class="result-empty">Your ball’s number and three coordinate pairs will appear here,
+                ready to copy.</div>
+            <div id="result" hidden>
+                <div class="result-grid"><label class="number-card">Final ball number<input id="number" type="number"
+                            min="1" max="100" step="1" aria-label="Final ball number"><small>Check against the
+                            highlighted final ball</small></label>
+                    <div id="coordinates" class="coordinates"></div><canvas id="zoom" width="144" height="144"
+                        aria-label="Enlarged final ball label"></canvas>
+                </div>
+                <p id="confidence"></p>
+                <div class="answer-row"><output id="answer"></output><button id="copy" class="primary">Copy answer
+                        ↗</button></div><small class="format">Format: number; x,y; x,y; x,y · Coordinates rounded to the
+                    nearest pixel.</small>
+            </div>
+        </section>
+        <footer><span>balltrace <span class="muted">/ a clearer way to follow</span></span><span>
+    Made by <a style="color: #8c9683;" href="https://hi-sarang.vercel.app/" target="_blank" rel="noopener">Sarang</a> ·
+    24f2005600@ds.study.iitm.ac.in
+  </span></footer>
+    </main>
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>
