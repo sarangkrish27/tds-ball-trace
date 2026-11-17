@@ -1,5 +1,5 @@
 import {Input, ALL_FORMATS, BlobSource, CanvasSink} from 'mediabunny';
-import {detect,Tracker,readNumber} from './tracker.js';
+import {detectFrame,Tracker,readNumber} from './tracker.js';
 const $=id=>document.getElementById(id),ctx=$('view').getContext('2d');
 let file=null,input=null,sink=null,history=[],requested=[],cancelled=false,busy=false,reviewToken=0;
 function status(text){$('status').textContent=text;}
@@ -23,7 +23,7 @@ $('track').onclick=async()=>{
   const duration=await track.computeDuration();sink=new CanvasSink(track,{poolSize:2,rotation:0});let tracker,index=0,lastCanvas;const detections=[];
   for await(const frame of sink.canvases()){
    if(cancelled)throw Error('Tracking cancelled. You can start again.');const canvas=frame.canvas,w=canvas.width,h=canvas.height;if(w*h>1920*1080)throw Error('Video resolution is too large. Maximum supported resolution is 1920 × 1080.');
-   const data=canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data;let balls=detect(data,w,h);if(balls.length!==100){const alternate=detect(data,w,h,true);if(alternate.length===100)balls=alternate;}
+   const data=canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data;const balls=detectFrame(data,w,h,tracker?.balls);
    if(!tracker){if(balls.length!==100)throw Error(`Detected ${balls.length} balls in the first frame; this tracker expects 100 outlined balls on a light background.`);tracker=new Tracker(balls);}
    const point=index===0?tracker.balls[tracker.target]:tracker.step(balls,index);history.push({...point,time:frame.timestamp,duration:frame.duration});detections.push(balls);
    if(index%6===0){draw(canvas,point,index);status(`Tracking frame ${index} · ${balls.length} balls detected`);$('progress').value=duration>0?Math.min(.98,frame.timestamp/duration):0;await new Promise(r=>setTimeout(r,0));}
@@ -39,6 +39,6 @@ $('track').onclick=async()=>{
   const needsReview=tracker.warnings.length||reverseMismatch;
   $('confidence').textContent=needsReview?`Review recommended: ${tracker.warnings.length} motion disagreements${tracker.warnings.length?` (frames ${tracker.warnings.slice(0,6).join(', ')})`:''}; ${reverseMismatch} reverse-path disagreements. This answer is an estimate. Check the path and enlarged number before using it.`:`Forward and reverse paths agree. Check the enlarged final label${ocr.number&&ocr.score>=.9?' to confirm the automatically read number.':', then enter its number above.'} Coordinates are measured from the top-left of the original video.`;
   $('resultState').textContent=needsReview?'REVIEW RECOMMENDED':'TRACE COMPLETE';$('result').hidden=false;$('resultEmpty').hidden=true;$('meta').textContent=`${lastCanvas.width} × ${lastCanvas.height} · ${history.length} FRAMES`;$('scrub').max=history.length-1;$('scrub').value=history.length-1;$('scrub').disabled=false;$('prev').disabled=false;$('next').disabled=false;draw(lastCanvas,final,history.length-1);updateAnswer();$('progress').value=1;status(`Done. Tracked ${history.length} frames. ${needsReview?'Review the estimated answer below.':'Your answer is ready below.'}`);
- }catch(e){status(e.message||'Tracking failed. Please try another video.');$('resultState').textContent='TRACE INCOMPLETE';if(history.length){$('scrub').max=history.length-1;$('scrub').disabled=false;$('prev').disabled=false;$('next').disabled=false;}}
+ }catch(e){status(e.message||'Tracking failed. Please try another video.');$('resultState').textContent='TRACE INCOMPLETE';if(history.length){$('scrub').max=history.length-1;$('scrub').disabled=false;$('prev').disabled=false;$('next').disabled=false;await review(history.length-1);}}
  finally{busy=false;$('track').disabled=!file;$('file').disabled=false;$('cancel').hidden=true;for(let i=1;i<=3;i++)$(`frame${i}`).disabled=false;}
 };

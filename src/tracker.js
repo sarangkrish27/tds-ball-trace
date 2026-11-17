@@ -14,6 +14,54 @@ export function detect(data, w, h, erode=false) {
  }
  return balls;
 }
+// Recover circular centres when compression connects several ball interiors.
+// This uses image evidence only: missing balls are never invented from old positions.
+export function detectCircles(data,w,h,radius=13*Math.min(w,h)/480){
+ const size=w*h,mask=new Uint8Array(size),seen=new Uint8Array(size),queue=new Int32Array(size);
+ const arena=Math.min(w,h)*.447;
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const i=y*w+x,k=i*4;
+  if((x-w/2)**2+(y-h/2)**2<arena*arena&&Math.max(data[k],data[k+1],data[k+2])<220)mask[i]=1;
+ }
+ // Fill small enclosed number-label holes, but not the arena background.
+ for(let i=0;i<size;i++)if(!mask[i]&&!seen[i]){
+  let head=0,tail=1,edge=false,minX=w,maxX=0,minY=h,maxY=0;queue[0]=i;seen[i]=1;
+  while(head<tail){const p=queue[head++],x=p%w,y=(p/w)|0;if(!x||!y||x===w-1||y===h-1)edge=true;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+   for(const q of [x>0?p-1:-1,x<w-1?p+1:-1,y>0?p-w:-1,y<h-1?p+w:-1])if(q>=0&&!mask[q]&&!seen[q]){seen[q]=1;queue[tail++]=q;}
+  }
+  if(!edge&&tail<radius*radius&&maxY-minY<radius&&maxX-minX<radius*1.7)for(let j=0;j<tail;j++)mask[queue[j]]=1;
+ }
+ const distance=new Float32Array(size),diag=Math.SQRT2;
+ for(let i=0;i<size;i++)distance[i]=mask[i]?w+h:0;
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const p=y*w+x;if(mask[p])distance[p]=Math.min(distance[p],distance[p-1]+1,distance[p-w]+1,distance[p-w-1]+diag,distance[p-w+1]+diag);}
+ for(let y=h-2;y>0;y--)for(let x=w-2;x>0;x--){const p=y*w+x;if(mask[p])distance[p]=Math.min(distance[p],distance[p+1]+1,distance[p+w]+1,distance[p+w+1]+diag,distance[p+w-1]+diag);}
+ const candidates=[];
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const p=y*w+x,d=distance[p];
+  if(d<radius*.65||d>radius*1.4)continue;
+  if(d<distance[p-1]||d<distance[p+1]||d<distance[p-w]||d<distance[p+w])continue;
+  candidates.push({x,y,d});
+ }
+ candidates.sort((a,b)=>b.d-a.d);const balls=[];
+ for(const c of candidates){if(balls.some(b=>(b.x-c.x)**2+(b.y-c.y)**2<(radius*1.55)**2))continue;
+  let inside=0,total=0,red=0;const rr=Math.ceil(radius*.8);
+  for(let dy=-rr;dy<=rr;dy++)for(let dx=-rr;dx<=rr;dx++)if(dx*dx+dy*dy<=rr*rr){const x=c.x+dx,y=c.y+dy;if(x<0||x>=w||y<0||y>=h)continue;const p=y*w+x,k=p*4;total++;inside+=mask[p];if(data[k]>140&&data[k+1]<90)red++;}
+  if(inside/total<.88)continue;
+  balls.push({x:c.x,y:c.y,r:radius,red:red/total,recovered:true});
+ }
+ return balls;
+}
+export function detectFrame(data,w,h,previous=[]){
+ const normal=detect(data,w,h);if(normal.length===100)return normal;
+ const eroded=detect(data,w,h,true);if(eroded.length===100)return eroded;
+ const radii=previous.map(b=>b.r).sort((a,b)=>a-b);
+ const circles=detectCircles(data,w,h,radii.length?radii[Math.floor(radii.length/2)]:undefined);
+ // Preserve good centroids and add only circles in genuinely uncovered regions.
+ const combined=[...normal];
+ for(const c of circles)if(!combined.some(b=>Math.hypot(b.x-c.x,b.y-c.y)<c.r*1.55))combined.push(c);
+ if(combined.length===100)return combined;
+ if(circles.length!==100)return normal;
+ return circles.map(c=>{const nearby=normal.filter(b=>Math.hypot(b.x-c.x,b.y-c.y)<c.r*.35);return nearby.length===1?nearby[0]:c;});
+}
 // Minimum-cost one-to-one assignment (Hungarian algorithm).
 export function assign(cost){
  const n=cost.length,m=cost[0]?.length||0;if(n>m)throw Error('Insufficient detections');

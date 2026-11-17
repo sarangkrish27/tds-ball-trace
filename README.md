@@ -1,92 +1,23 @@
-# BallTrace
+# Ball Trace
 
-Upload your bouncing-balls video, enter the three frame numbers from your question, and BallTrace tells you:
+A browser-only WebM tracker for 100 outlined grey balls on a light background, with one red ball in frame zero. Videos stay on the visitor's device. Desktop Chrome or Edge is recommended (WebCodecs is required).
 
-1. the **number printed on your ball** at the end, and
-2. your ball's **centre `x,y`** at each of the three frames.
+## Develop
 
-Output format (matches the question):
-
-```
-Number; x1,y1; x2,y2; x3,y3
-```
-
-## The puzzle
-
-100 balls bounce around inside a circle. At the start, one ball is red. It turns grey like all the others and the balls start colliding. When they stop, a number (1–100) appears on each ball. The task is to find the number on the originally red ball, plus its centre at three given frames. Every student's video is unique.
-
-- Frames count from **0**.
-- Pixels count from the **top-left** corner.
+Run `npm ci`, `npm test`, and `npm run build`. Serve `dist` using a static HTTP server; production hosting must use HTTPS. The committed `.openai/hosting.json` identifies the Sites deployment. No server, account, API key, or video upload endpoint is needed.
 
 ## How it works
 
-All balls look identical once the red one turns grey, so BallTrace follows the red ball continuously from the first frame to the last:
+Mediabunny decodes frames in presentation order; indices start at zero. Pixel segmentation detects ball interiors, with a morphological erosion fallback for compressed touching edges. If both passes fail, a distance-transform circle detector separates connected balls and fills small number-label holes. It combines recovered centres with valid interior centroids, without inventing positions from previous frames. A minimum-cost global one-to-one assignment follows all balls. A velocity-based assignment supplies a disagreement check, and a reverse pass verifies the target path. Coordinates are interior centroids or recovered circle centres in original video pixels, rounded to whole pixels. A 3×5 pixel-glyph reader recognizes the sample's final number style; users can inspect or correct that number.
 
-1. **Decode** every frame of the `.webm` (480×480, 30 fps).
-2. **Find the red ball** in frame 0.
-3. **Detect all 100 balls** in every frame and compute sub-pixel centres.
-4. **Track** each ball frame to frame (velocity prediction plus optimal assignment), so identities survive collisions.
-5. **Read the final numbers** on the stopped balls (OCR) and look up the one belonging to the tracked ball.
-6. **Report** the number and the ball's centre at your three frames.
+The result format is `number; x,y; x,y; x,y`, in the same order as the frame inputs.
 
-### Self-checks
+## Limits
 
-- Exactly 100 balls detected in every frame.
-- No impossible jumps in position between frames.
-- The recognised numbers form each of 1..100 exactly once.
+This is an estimated visual tracker, not a proof of identity. Identical balls, large motion between frames, occlusion, different colors or label fonts, edits, and compression may cause failure or ambiguity. Count mismatches stop processing rather than return a fabricated answer. Motion or reverse disagreements are flagged for review. Passing consistency checks does not guarantee the correct identity. The UI includes frame review and the enlarged final label.
 
-## Using the website
+Files are limited to 100 MB and 1920×1080 pixels. Detection thresholds and ball size scaling are tuned to the supplied 480×480 sample. External font loading is cosmetic; all video computation is local.
 
-1. Open **http://localhost:5174**.
-2. Upload your `.webm` video.
-3. Enter the three frame numbers from your question.
-4. Click **Track**.
-5. Copy the result line, and use the annotated images to double-check the ball it picked.
+## Validation
 
-## Running locally
-
-> Adjust the commands below to match your project layout.
-
-```bash
-# clone
-git clone <your-repo-url>
-cd balltrace
-
-# backend
-cd backend
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
-
-# frontend (new terminal)
-cd frontend
-npm install
-npm run dev                      # serves on http://localhost:5174
-```
-
-## Tech stack
-
-- **Frontend:** Vue.js
-- **Backend:** Python (Flask), OpenCV, NumPy, SciPy
-- **OCR:** digit recognition on the final frame
-
-## Tips and troubleshooting
-
-- Use the original `.webm` file, not a re-encoded copy, so frame numbers stay exact.
-- Frame numbers are 0-based: the first frame is `0`.
-- If the result looks wrong, check the annotated frames. A highlighted ball in the wrong place means tracking drifted.
-- If the number check fails, re-upload the video and try again.
-
-## Project structure
-
-```
-balltrace/
-├── backend/     # video decoding, detection, tracking, OCR, API
-├── frontend/    # upload form and results page
-└── README.md
-```
-
-## Author
-
-Built by Sarang for fellow IIT Madras BS students.
+The supplied sample decoded to 722 frames. All 100 balls were detected in every frame (one needed erosion), all final labels were recognized as the unique numbers 1–100, and both motion and reverse checks agreed with the target path. There is no supplied ground-truth answer, so these are consistency checks, not an independent accuracy measurement.
